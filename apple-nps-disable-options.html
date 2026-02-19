@@ -680,10 +680,18 @@ function go(dir) {
   render();
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight' || e.key === ' ') go(1);
-  if (e.key === 'ArrowLeft') go(-1);
-});
+const params = new URLSearchParams(window.location.search);
+const locked = params.get('slide');
+
+if (locked !== null) {
+  current = Math.max(0, Math.min(total - 1, parseInt(locked, 10)));
+  document.querySelector('.nav-bar').style.display = 'none';
+} else {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+}
 
 render();
 </script>
