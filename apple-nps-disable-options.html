@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple NPS Disable — Options & Recommendation</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background-color: #FFFFFF;
+    background-image: radial-gradient(circle, #DDDDE0 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #canvas {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .dot-bg {
+    position: absolute;
+    inset: 0;
+    background-color: #FFFFFF;
+    background-image: radial-gradient(circle, #DDDDE0 1.2px, transparent 1.2px);
+    background-size: 24px 24px;
+  }
+
+  /* Typography */
+  .headline {
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 1.0;
+    color: #1C1C1E;
+  }
+  .label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .body-text {
+    font-size: 16px;
+    color: #6E6E73;
+    line-height: 1.55;
+  }
+
+  /* Cards */
+  .option-card {
+    background: #fff;
+    border: 2px solid #E5E5EA;
+    border-radius: 16px;
+    padding: 20px;
+    cursor: default;
+    transition: all 0.3s cubic-bezier(.22,.68,0,1);
+    position: relative;
+    overflow: hidden;
+  }
+  .option-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    transition: opacity 0.3s;
+  }
+  .option-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+  }
+  .option-card[data-verdict="recommended"] { border-color: #30D158; }
+  .option-card[data-verdict="recommended"]::before { background: #30D158; opacity:1; }
+  .option-card[data-verdict="fallback"]:hover { border-color: #FFDD33; }
+  .option-card[data-verdict="fallback"]::before { background: #FFDD33; opacity:0; }
+  .option-card[data-verdict="fallback"]:hover::before { opacity:1; }
+  .option-card[data-verdict="risky"]:hover { border-color: #FF9500; }
+  .option-card[data-verdict="risky"]::before { background: #FF9500; opacity:0; }
+  .option-card[data-verdict="risky"]:hover::before { opacity:1; }
+  .option-card[data-verdict="rejected"]:hover { border-color: #FF453A; }
+  .option-card[data-verdict="rejected"]::before { background: #FF453A; opacity:0; }
+  .option-card[data-verdict="rejected"]:hover::before { opacity:1; }
+
+  /* Nav */
+  .nav-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(12px);
+    padding: 8px 18px;
+    border-radius: 14px;
+    border: 1px solid #E5E5EA;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .nav-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #D1D1D6;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    padding: 0;
+  }
+  .nav-dot.active {
+    width: 24px;
+    border-radius: 4px;
+    background: #1C1C1E;
+  }
+  .nav-btn {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    border: 1px solid #E5E5EA;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: #F5F5F7; }
+  .nav-btn:disabled { opacity: 0.25; cursor: default; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+  }
+  .badge-green { background: #30D15818; color: #1B8A37; border: 1px solid #30D15840; }
+  .badge-yellow { background: #FFDD3318; color: #8B7000; border: 1px solid #FFDD3360; }
+  .badge-orange { background: #FF950018; color: #CC7700; border: 1px solid #FF950040; }
+  .badge-red { background: #FF453A18; color: #CC2D24; border: 1px solid #FF453A40; }
+
+  /* Timeline */
+  .tl-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    transition: background 0.2s;
+  }
+  .tl-row:hover { background: rgba(71,209,196,0.06); }
+  .tl-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 3px solid #867AFF;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .tl-dot.done { background: #30D158; border-color: #30D158; }
+  .tl-date { width: 80px; font-size: 12px; font-weight: 700; font-family: 'Inter',monospace; color: #1C1C1E; flex-shrink:0; }
+
+  /* Accent shapes */
+  .accent-circle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  /* Slide-specific */
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: #47D1C4;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .pro-con { display:flex; align-items:flex-start; gap:5px; margin-bottom:3px; font-size:11px; color:#1C1C1E; line-height:1.35; }
+  .pro-con svg { flex-shrink:0; margin-top:1px; }
+
+  /* Key fact chip */
+  .fact-chip {
+    padding: 14px 20px;
+    border-radius: 14px;
+    background: #1C1C1E;
+    color: #fff;
+    text-align: center;
+  }
+  .fact-chip .fact-value { font-size: 22px; font-weight: 900; margin-bottom: 2px; }
+  .fact-chip .fact-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; opacity: 0.5; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div id="canvas">
+  <!-- ════ SLIDE 1: TITLE ════ -->
+  <div class="slide active" id="s0">
+    <div class="dot-bg"></div>
+
+    <div style="position:absolute; right:-4vw; top:-4vw; width:28vw; height:28vw; background:linear-gradient(135deg,#FFDD33,#47D1C4); border-radius:50%; opacity:0.12;"></div>
+    <div style="position:absolute; left:-6vw; bottom:-6vw; width:20vw; height:20vw; background:linear-gradient(135deg,#867AFF,#FF453A); border-radius:50%; opacity:0.08;"></div>
+
+    <div style="position:relative; z-index:1; height:100%; display:flex; flex-direction:column; justify-content:center; padding:0 6vw;">
+      <div style="display:flex; align-items:center; gap:14; margin-bottom:24px;">
+        <div style="width:52px; height:52px; border-radius:14px; background:#1C1C1E; display:flex; align-items:center; justify-content:center;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="#fff"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 21.99 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 21.99C7.79 22.03 6.8 20.68 5.96 19.47C4.25 16.99 2.97 12.5 4.7 9.56C5.55 8.1 7.13 7.17 8.82 7.15C10.09 7.13 11.29 8.02 12.07 8.02C12.85 8.02 14.29 6.95 15.82 7.11C16.46 7.14 18.25 7.38 19.4 9.05C19.3 9.11 17.19 10.33 17.21 12.85C17.24 15.87 19.88 16.84 19.91 16.85C19.89 16.91 19.5 18.25 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+        </div>
+        <span class="label" style="color:#8E8E93; letter-spacing:3px;">Enterprise Request · Feb 2026</span>
+      </div>
+
+      <h1 class="headline" style="font-size:58px; margin-bottom:20px;">
+        Disabling Wootric NPS<br>for Apple
+      </h1>
+
+      <p class="body-text" style="max-width:620px; margin-bottom:36px;">
+        Apple needs Miro's NPS survey suppressed <strong style="color:#1C1C1E">Feb 23 → Mar 4</strong> so they can run their own Voice of the Customer survey without interference.
+      </p>
+
+      <div style="display:flex; gap:14px;">
+        <div class="fact-chip">
+          <div class="fact-label">Org ID</div>
+          <div class="fact-value" style="font-size:16px; font-family:monospace;">3074…834205</div>
+        </div>
+        <div class="fact-chip" style="background:#FF453A;">
+          <div class="fact-label" style="opacity:0.7;">Deadline</div>
+          <div class="fact-value" style="font-size:18px;">3 days</div>
+        </div>
+        <div class="fact-chip">
+          <div class="fact-label">Scope</div>
+          <div class="fact-value" style="font-size:15px;">Wootric NPS only</div>
+        </div>
+        <div class="fact-chip" style="background:#47D1C4;">
+          <div class="fact-label" style="opacity:0.7;">Duration</div>
+          <div class="fact-value" style="font-size:18px;">~10 days</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SLIDE 2: ALL OPTIONS ════ -->
+  <div class="slide" id="s1">
+    <div class="dot-bg"></div>
+    <div style="position:relative; z-index:1; height:100%; padding:3vh 4vw; display:flex; flex-direction:column;">
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2vh;">
+        <div>
+          <h2 class="headline" style="font-size:30px; margin-bottom:4px;">Five Options Evaluated</h2>
+          <p style="font-size:12px; color:#8E8E93;">Hover each card for details — pros, cons, and owners</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <span class="badge badge-green">✓ Recommended</span>
+          <span class="badge badge-yellow">Fallback</span>
+          <span class="badge badge-orange">Risky</span>
+          <span class="badge badge-red">✗ Rejected</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1vw; flex:1; min-height:0;">
+
+        <!-- Option 1 -->
+        <div class="option-card" data-verdict="recommended">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span class="badge badge-green">✓ PICK</span>
+            <span style="font-size:28px; font-weight:900; color:#E5E5EA;">01</span>
+          </div>
+          <h3 style="font-size:14px; font-weight:800; color:#1C1C1E; margin-bottom:4px; line-height:1.2;">API Per-User Disable</h3>
+          <p style="font-size:10.5px; color:#8E8E93; margin-bottom:14px; line-height:1.4;">Set <code style="background:#F0F0F5; padding:1px 4px; border-radius:3px; font-size:10px;">web_nps: false</code> via Wootric API</p>
+
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#30D158; font-size:9px; margin-bottom:5px;">Pros</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Surgical — Apple only</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Fully reversible</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> No code deploy</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Scriptable in hours</div>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#FF453A; font-size:9px; margin-bottom:5px;">Cons</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Rate-limited (100/min)</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Needs API credentials</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Users must exist</div>
+          </div>
+
+          <div style="margin-top:auto; padding-top:10px; border-top:1px solid #F0F0F0;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:4px;">Owners</div>
+            <div style="font-size:11px; color:#8E8E93;">Dima → emails</div>
+            <div style="font-size:11px; color:#8E8E93;">Felipe → script</div>
+          </div>
+        </div>
+
+        <!-- Option 2 -->
+        <div class="option-card" data-verdict="fallback">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span class="badge badge-yellow">FALLBACK</span>
+            <span style="font-size:28px; font-weight:900; color:#E5E5EA;">02</span>
+          </div>
+          <h3 style="font-size:14px; font-weight:800; color:#1C1C1E; margin-bottom:4px; line-height:1.2;">Dashboard Sampling</h3>
+          <p style="font-size:10.5px; color:#8E8E93; margin-bottom:14px; line-height:1.4;">Exclude via Wootric Targeted Sampling rules</p>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#30D158; font-size:9px; margin-bottom:5px;">Pros</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> No code changes</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> UI toggle on/off</div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#FF453A; font-size:9px; margin-bottom:5px;">Cons</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No exclusion UI found</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Depends on properties</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> May not support exclude</div>
+          </div>
+          <div style="margin-top:auto; padding-top:10px; border-top:1px solid #F0F0F0;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:4px;">Owners</div>
+            <div style="font-size:11px; color:#8E8E93;">Felipe → investigate</div>
+          </div>
+        </div>
+
+        <!-- Option 3 -->
+        <div class="option-card" data-verdict="risky">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span class="badge badge-orange">RISKY</span>
+            <span style="font-size:28px; font-weight:900; color:#E5E5EA;">03</span>
+          </div>
+          <h3 style="font-size:14px; font-weight:800; color:#1C1C1E; margin-bottom:4px; line-height:1.2;">Frontend Code Change</h3>
+          <p style="font-size:10.5px; color:#8E8E93; margin-bottom:14px; line-height:1.4;">Skip <code style="background:#F0F0F5; padding:1px 4px; border-radius:3px; font-size:10px;">wootric('run')</code> for Apple org</p>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#30D158; font-size:9px; margin-bottom:5px;">Pros</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Complete control</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 100% reliable</div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#FF453A; font-size:9px; margin-bottom:5px;">Cons</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Needs code deploy</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Review cycles</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> 3-day deadline = risky</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reverse = another deploy</div>
+          </div>
+          <div style="margin-top:auto; padding-top:10px; border-top:1px solid #F0F0F0;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:4px;">Owners</div>
+            <div style="font-size:11px; color:#8E8E93;">Engineering team</div>
+          </div>
+        </div>
+
+        <!-- Option 4 -->
+        <div class="option-card" data-verdict="rejected" style="opacity:0.65;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span class="badge badge-red">✗ NO</span>
+            <span style="font-size:28px; font-weight:900; color:#E5E5EA;">04</span>
+          </div>
+          <h3 style="font-size:14px; font-weight:800; color:#1C1C1E; margin-bottom:4px; line-height:1.2;">Global Pause</h3>
+          <p style="font-size:10.5px; color:#8E8E93; margin-bottom:14px; line-height:1.4;">Disable NPS for ALL Miro users</p>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#30D158; font-size:9px; margin-bottom:5px;">Pros</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> One toggle</div>
+          </div>
+          <div>
+            <div class="label" style="color:#FF453A; font-size:9px; margin-bottom:5px;">Cons</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Nuclear — kills all NPS</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> 2-week data gap</div>
+          </div>
+          <div style="margin-top:auto; padding-top:10px; border-top:1px solid #F0F0F0;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:4px;">Owners</div>
+            <div style="font-size:11px; color:#8E8E93;">Felipe → toggle</div>
+          </div>
+        </div>
+
+        <!-- Option 5 -->
+        <div class="option-card" data-verdict="rejected" style="opacity:0.65;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <span class="badge badge-red">✗ NO</span>
+            <span style="font-size:28px; font-weight:900; color:#E5E5EA;">05</span>
+          </div>
+          <h3 style="font-size:14px; font-weight:800; color:#1C1C1E; margin-bottom:4px; line-height:1.2;">Reset last_surveyed</h3>
+          <p style="font-size:10.5px; color:#8E8E93; margin-bottom:14px; line-height:1.4;">Set <code style="background:#F0F0F5; padding:1px 4px; border-radius:3px; font-size:10px;">last_surveyed</code> = now</p>
+          <div style="margin-bottom:10px;">
+            <div class="label" style="color:#30D158; font-size:9px; margin-bottom:5px;">Pros</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Simple API call</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> No reversal needed</div>
+          </div>
+          <div>
+            <div class="label" style="color:#FF453A; font-size:9px; margin-bottom:5px;">Cons</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Destroys survey history</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Shifts NPS cycle forever</div>
+            <div class="pro-con"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF453A" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Data integrity risk</div>
+          </div>
+          <div style="margin-top:auto; padding-top:10px; border-top:1px solid #F0F0F0;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:4px;">Owners</div>
+            <div style="font-size:11px; color:#8E8E93;">Dima + Felipe</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SLIDE 3: RECOMMENDATION ════ -->
+  <div class="slide" id="s2">
+    <div class="dot-bg"></div>
+    <div style="position:relative; z-index:1; height:100%; display:flex; align-items:center; padding:0 6vw; gap:4vw;">
+
+      <div style="flex:1.3;">
+        <span class="badge badge-green" style="margin-bottom:20px; font-size:11px; padding:5px 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1B8A37" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          RECOMMENDATION
+        </span>
+
+        <h2 class="headline" style="font-size:46px; margin-bottom:18px; margin-top:16px;">
+          Option 1:<br>API Per-User<br>Disable
+        </h2>
+
+        <p class="body-text" style="max-width:460px; margin-bottom:32px;">
+          Use Wootric REST API to set <code style="padding:3px 8px; border-radius:6px; background:#F0F0F5; font-size:14px; font-family:monospace; font-weight:600;">web_nps: false</code> for each Apple user. Surgical, reversible, no deploy.
+        </p>
+
+        <div style="display:flex; gap:24px;">
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:14px; background:#30D15815; display:flex; align-items:center; justify-content:center; margin:0 auto 6px;">
+              <span style="font-size:24px;">🎯</span>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#1C1C1E;">Targeted</div>
+            <div style="font-size:10px; color:#8E8E93;">Apple only</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:14px; background:#47D1C415; display:flex; align-items:center; justify-content:center; margin:0 auto 6px;">
+              <span style="font-size:24px;">↩️</span>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#1C1C1E;">Reversible</div>
+            <div style="font-size:10px; color:#8E8E93;">Flip back Mar 4</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:14px; background:#FFDD3315; display:flex; align-items:center; justify-content:center; margin:0 auto 6px;">
+              <span style="font-size:24px;">⚡</span>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#1C1C1E;">Fast</div>
+            <div style="font-size:10px; color:#8E8E93;">Script in hours</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="width:52px; height:52px; border-radius:14px; background:#867AFF15; display:flex; align-items:center; justify-content:center; margin:0 auto 6px;">
+              <span style="font-size:24px;">🚫</span>
+            </div>
+            <div style="font-size:12px; font-weight:700; color:#1C1C1E;">No Deploy</div>
+            <div style="font-size:10px; color:#8E8E93;">Zero eng effort</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:0.7;">
+        <div style="background:#1C1C1E; border-radius:20px; padding:32px 28px; color:#fff;">
+          <div class="label" style="color:#FFDD33; margin-bottom:20px; letter-spacing:3px;">How It Works</div>
+
+          <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:18px;">
+            <div class="step-num">1</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; margin-bottom:1px;">Pull Apple emails</div>
+              <div style="font-size:11px; opacity:0.5;">Snowflake query → Dima</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:18px;">
+            <div class="step-num">2</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; margin-bottom:1px;">Look up via Wootric API</div>
+              <div style="font-size:11px; opacity:0.5;">GET /v1/end_users?email=…</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:14px; margin-bottom:18px;">
+            <div class="step-num">3</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; margin-bottom:1px;">Disable NPS flags</div>
+              <div style="font-size:11px; opacity:0.5;">web_nps & mobile_nps → false</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:flex-start; gap:14px;">
+            <div class="step-num" style="background:#867AFF;">4</div>
+            <div>
+              <div style="font-size:13px; font-weight:600; margin-bottom:1px;">Reverse on ~Mar 4</div>
+              <div style="font-size:11px; opacity:0.5;">Same script, set → true</div>
+            </div>
+          </div>
+
+          <div style="margin-top:24px; padding-top:18px; border-top:1px solid #333;">
+            <div class="label" style="color:#867AFF; font-size:9px; margin-bottom:6px;">Fallback</div>
+            <p style="font-size:12px; opacity:0.6; line-height:1.4;">If API hits a wall → <strong style="color:#FFDD33;">Option 2</strong> (Dashboard Targeted Sampling)</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════ SLIDE 4: TIMELINE ════ -->
+  <div class="slide" id="s3">
+    <div class="dot-bg"></div>
+    <div style="position:relative; z-index:1; height:100%; padding:3vh 6vw; display:flex; flex-direction:column;">
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2vh;">
+        <div>
+          <h2 class="headline" style="font-size:30px; margin-bottom:4px;">Execution Timeline</h2>
+          <p style="font-size:12px; color:#8E8E93;">7 steps · Today → March 5</p>
+        </div>
+        <div style="display:flex; gap:16px;">
+          <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#8E8E93;">
+            <div style="width:10px; height:10px; border-radius:50%; background:#30D158;"></div> Done
+          </div>
+          <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#8E8E93;">
+            <div style="width:10px; height:10px; border-radius:50%; border:2.5px solid #867AFF; background:#fff;"></div> Pending
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:3vw; flex:1; min-height:0;">
+        <!-- Timeline column -->
+        <div style="flex:1; position:relative;">
+          <div style="position:absolute; left:6px; top:16px; bottom:16px; width:2px; background:linear-gradient(to bottom, #47D1C4, #867AFF); border-radius:2px;"></div>
+
+          <div class="tl-row">
+            <div class="tl-dot done"></div>
+            <div class="tl-date">Feb 19</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Pull Apple emails from Snowflake</div>
+              <div style="font-size:11px; color:#8E8E93;">Dima</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+
+          <div class="tl-row">
+            <div class="tl-dot"></div>
+            <div class="tl-date">Feb 19</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Validate Wootric API + test 1 user</div>
+              <div style="font-size:11px; color:#8E8E93;">Felipe</div>
+            </div>
+          </div>
+
+          <div class="tl-row">
+            <div class="tl-dot"></div>
+            <div class="tl-date">Feb 20–21</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Run disable script for all Apple users</div>
+              <div style="font-size:11px; color:#8E8E93;">Felipe</div>
+            </div>
+          </div>
+
+          <div class="tl-row">
+            <div class="tl-dot"></div>
+            <div class="tl-date">Feb 22</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Confirm NPS is suppressed</div>
+              <div style="font-size:11px; color:#8E8E93;">Felipe + Mary</div>
+            </div>
+          </div>
+
+          <div class="tl-row" style="background:rgba(255,221,51,0.08); border-radius:12px;">
+            <div class="tl-dot" style="border-color:#FFDD33; background:#FFDD33;"></div>
+            <div class="tl-date" style="color:#8B7000;">Feb 23</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:700; color:#8B7000;">Apple launches VoC survey</div>
+              <div style="font-size:11px; color:#B8960A;">Apple</div>
+            </div>
+            <span style="font-size:16px;">🍎</span>
+          </div>
+
+          <div class="tl-row">
+            <div class="tl-dot"></div>
+            <div class="tl-date">~Mar 4</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Run re-enable script</div>
+              <div style="font-size:11px; color:#8E8E93;">Felipe</div>
+            </div>
+          </div>
+
+          <div class="tl-row">
+            <div class="tl-dot"></div>
+            <div class="tl-date">Mar 4–5</div>
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#1C1C1E;">Confirm NPS restored</div>
+              <div style="font-size:11px; color:#8E8E93;">Felipe + Mary</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary panel -->
+        <div style="width:300px; display:flex; flex-direction:column; gap:14px;">
+          <div style="background:#1C1C1E; border-radius:16px; padding:24px; color:#fff;">
+            <div class="label" style="color:#FFDD33; margin-bottom:14px; letter-spacing:2px;">Key People</div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+              <div style="width:36px; height:36px; border-radius:10px; background:#47D1C4; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff;">D</div>
+              <div><div style="font-size:13px; font-weight:600;">Dima</div><div style="font-size:10px; opacity:0.5;">Snowflake data pull</div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+              <div style="width:36px; height:36px; border-radius:10px; background:#867AFF; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff;">F</div>
+              <div><div style="font-size:13px; font-weight:600;">Felipe</div><div style="font-size:10px; opacity:0.5;">Wootric API scripts</div></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:36px; height:36px; border-radius:10px; background:#FF9500; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#fff;">M</div>
+              <div><div style="font-size:13px; font-weight:600;">Mary</div><div style="font-size:10px; opacity:0.5;">Apple liaison · validation</div></div>
+            </div>
+          </div>
+
+          <div style="background:#30D15810; border:1px solid #30D15830; border-radius:16px; padding:20px; text-align:center;">
+            <div style="font-size:36px; font-weight:900; color:#1B8A37;">0</div>
+            <div style="font-size:11px; font-weight:600; color:#1B8A37; margin-bottom:2px;">Code deploys needed</div>
+            <div style="font-size:10px; color:#8E8E93;">Pure API + script approach</div>
+          </div>
+
+          <div style="background:#F5F5F7; border-radius:16px; padding:20px; text-align:center;">
+            <div style="font-size:36px; font-weight:900; color:#1C1C1E;">~10d</div>
+            <div style="font-size:11px; font-weight:600; color:#1C1C1E; margin-bottom:2px;">Suppression window</div>
+            <div style="font-size:10px; color:#8E8E93;">Feb 23 → Mar 4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ NAVIGATION ════ -->
+  <div class="nav-bar">
+    <button class="nav-btn" id="prev-btn" onclick="go(-1)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div id="dots" style="display:flex; gap:6px;"></div>
+    <button class="nav-btn" id="next-btn" onclick="go(1)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <span id="counter" style="font-size:11px; font-weight:600; color:#8E8E93; margin-left:8px;"></span>
+  </div>
+</div>
+
+<script>
+/* ── Slide Navigation ── */
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+function render() {
+  slides.forEach((s, i) => s.classList.toggle('active', i === current));
+  document.getElementById('prev-btn').disabled = current === 0;
+  document.getElementById('next-btn').disabled = current === total - 1;
+  document.getElementById('counter').textContent = `${current + 1} / ${total}`;
+
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('button');
+    d.className = 'nav-dot' + (i === current ? ' active' : '');
+    d.onclick = () => { current = i; render(); };
+    dots.appendChild(d);
+  }
+}
+
+function go(dir) {
+  current = Math.max(0, Math.min(total - 1, current + dir));
+  render();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+  if (e.key === 'ArrowLeft') go(-1);
+});
+
+render();
+</script>
+</body>
+</html>
